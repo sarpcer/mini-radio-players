@@ -154,6 +154,7 @@
   .kind-badge.html_page     { background: #1a2e3d; color: var(--accent); }
   .kind-badge.unknown        { background: var(--surface2); color: var(--text-dim); }
   .kind-badge.manual         { background: #2e1a3d; color: #c084fc; }
+  .kind-badge.known_station  { background: #1a3a1a; color: #4cca7a; }
 
   .editable {
     background: transparent;
@@ -511,6 +512,44 @@ function extractStreamsFromHtml(html, baseUrl) {
 }
 
 // ---------------------------------------------------------------------------
+// Known-stations database
+// Keyed by hostname with "www." stripped and lowercased.
+// Stream URLs may go stale; treat this as a curated list requiring occasional review.
+// ---------------------------------------------------------------------------
+const KNOWN_STATIONS = {
+  'nts.live': [
+    { title: 'NTS Live — Channel 1', streamUrl: 'https://stream-relay-geo.ntslive.net/stream' },
+    { title: 'NTS Live — Channel 2', streamUrl: 'https://stream-relay-geo.ntslive.net/stream2' }
+  ],
+  'rinse.fm': [
+    { title: 'Rinse FM', streamUrl: 'https://rinse.out.airtime.pro/rinse_a' }
+  ],
+  'somafm.com': [
+    { title: 'SomaFM — Groove Salad',    streamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+    { title: 'SomaFM — Drone Zone',      streamUrl: 'https://ice1.somafm.com/dronezone-128-mp3' },
+    { title: 'SomaFM — Lush',            streamUrl: 'https://ice2.somafm.com/lush-128-mp3' },
+    { title: 'SomaFM — Indie Pop Rocks', streamUrl: 'https://ice1.somafm.com/indiepop-128-mp3' },
+    { title: 'SomaFM — Space Station',   streamUrl: 'https://ice1.somafm.com/spacestation-128-mp3' }
+  ],
+  'kexp.org': [
+    { title: 'KEXP 90.3 FM', streamUrl: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3' }
+  ],
+  'fip.fr': [
+    { title: 'FIP',         streamUrl: 'https://icecast.radiofrance.fr/fip-hifi.aac' },
+    { title: 'FIP Rock',    streamUrl: 'https://icecast.radiofrance.fr/fiprock-hifi.aac' },
+    { title: 'FIP Jazz',    streamUrl: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac' },
+    { title: 'FIP Monde',   streamUrl: 'https://icecast.radiofrance.fr/fipmonde-hifi.aac' },
+    { title: 'FIP Électro', streamUrl: 'https://icecast.radiofrance.fr/fipelectro-hifi.aac' }
+  ],
+  'wfmu.org': [
+    { title: 'WFMU', streamUrl: 'https://stream0.wfmu.org/freeform-128k' }
+  ],
+  'worldwidefm.net': [
+    { title: 'Worldwide FM', streamUrl: 'https://worldwidefm.out.airtime.pro/worldwidefm_a' }
+  ]
+};
+
+// ---------------------------------------------------------------------------
 // Core resolver
 // ---------------------------------------------------------------------------
 async function resolveUrl(inputUrl) {
@@ -532,6 +571,16 @@ async function resolveUrl(inputUrl) {
   }
 
   result.groupTitle = guessTitle(url.toString());
+
+  // --- Known-stations short-circuit ---
+  // Strips "www." so both "nts.live" and "www.nts.live" match.
+  const knownKey = url.hostname.replace(/^www\./, '').toLowerCase();
+  if (KNOWN_STATIONS[knownKey]) {
+    log(`Known station matched: ${knownKey}`);
+    result.kind = 'known_station';
+    result.stations = KNOWN_STATIONS[knownKey].map(s => ({ ...s }));
+    return result;
+  }
 
   const ext = extractExtension(url.toString());
 
