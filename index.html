@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radio Stream Resolver (Groups)</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3346;
+    --text: #e2e4eb;
+    --text-dim: #8b8fa3;
+    --accent: #6c8cff;
+    --accent-hover: #8ba4ff;
+    --green: #4cca7a;
+    --red: #e5534b;
+    --orange: #e09956;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* --- Input bar --- */
+  .input-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .input-bar input[type="text"] {
+    flex: 1;
+    padding: 0.6rem 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-bar input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  button {
+    padding: 0.6rem 1.2rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: var(--accent-hover); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  button.small {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  button.play-btn { background: var(--green); }
+  button.play-btn:hover { background: #5dd98a; }
+  button.play-btn.active { background: var(--red); }
+  button.play-btn.active:hover { background: #f06860; }
+
+  button.copy-btn { background: var(--surface2); border: 1px solid var(--border); }
+  button.copy-btn:hover { background: var(--border); }
+
+  /* --- Volume --- */
+  .volume-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .volume-bar input[type="range"] {
+    width: 160px;
+    accent-color: var(--accent);
+  }
+
+  /* --- Status / log --- */
+  .status-box {
+    padding: 0.6rem 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    min-height: 2rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .status-box.error { border-color: var(--red); color: var(--red); }
+
+  /* --- Result group card --- */
+  .group-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .group-header .kind-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .kind-badge.direct_stream { background: #1a3d2e; color: var(--green); }
+  .kind-badge.playlist      { background: #3d2e1a; color: var(--orange); }
+  .kind-badge.html_page     { background: #1a2e3d; color: var(--accent); }
+  .kind-badge.unknown        { background: var(--surface2); color: var(--text-dim); }
+  .kind-badge.manual         { background: #2e1a3d; color: #c084fc; }
+
+  .editable {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .editable:hover { border-color: var(--border); }
+  .editable:focus { border-color: var(--accent); }
+
+  /* --- Station row --- */
+  .station-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .station-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface2);
+    border-radius: 6px;
+    flex-wrap: wrap;
+  }
+
+  .station-row .station-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: 100px;
+    max-width: 200px;
+  }
+
+  .station-row .station-url {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .station-row a {
+    color: var(--accent);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .station-row a:hover { text-decoration: underline; }
+
+  .station-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-left: auto;
+  }
+
+  /* --- Manual fallback --- */
+  .fallback-box {
+    background: var(--surface);
+    border: 1px solid var(--orange);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .fallback-box h3 {
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    color: var(--orange);
+  }
+
+  .fallback-box p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 0.6rem;
+  }
+
+  .fallback-box textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 0.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: monospace;
+    font-size: 0.82rem;
+    resize: vertical;
+    margin-bottom: 0.5rem;
+  }
+
+  .fallback-box textarea:focus { outline: none; border-color: var(--accent); }
+
+  /* --- Misc --- */
+  .hidden { display: none !important; }
+  .sep { border-top: 1px solid var(--border); margin: 1rem 0; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--green);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1>Radio Stream Resolver (Groups)</h1>
+<p class="subtitle">Paste a radio station URL or stream URL. Discovered streams are grouped and deduplicated.</p>
+
+<div class="input-bar">
+  <input type="text" id="urlInput" placeholder="https://example.com/stream or station page URL" />
+  <button id="resolveBtn">Resolve</button>
+</div>
+
+<div class="volume-bar">
+  <label for="volumeSlider">Volume</label>
+  <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" />
+  <span id="volumeLabel">80%</span>
+</div>
+
+<div id="statusBox" class="status-box">Ready.</div>
+
+<div id="fallbackArea" class="hidden"></div>
+<div id="resultsArea"></div>
+
+<audio id="globalAudio" preload="none"></audio>
+<div id="toast" class="toast"></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const audio = document.getElementById('globalAudio');
+let currentlyPlayingBtn = null;
+let groupCounter = 0;
+
+// Volume slider wiring
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeLabel = document.getElementById('volumeLabel');
+audio.volume = parseFloat(volumeSlider.value);
+
+volumeSlider.addEventListener('input', () => {
+  audio.volume = parseFloat(volumeSlider.value);
+  volumeLabel.textContent = Math.round(volumeSlider.value * 100) + '%';
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function log(msg, isError = false) {
+  const box = document.getElementById('statusBox');
+  box.textContent = msg;
+  box.classList.toggle('error', isError);
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function normalizeUrl(url) {
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    // remove trailing slash for comparison
+    let s = u.toString();
+    if (s.endsWith('/')) s = s.slice(0, -1);
+    return s.toLowerCase();
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
+function deduplicate(stations) {
+  const seen = new Set();
+  return stations.filter(s => {
+    const key = normalizeUrl(s.streamUrl);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isAudioContentType(ct) {
+  if (!ct) return false;
+  const lower = ct.toLowerCase();
+  return (
+    lower.includes('audio/') ||
+    lower.includes('application/ogg') ||
+    lower.includes('application/octet-stream')
+  );
+}
+
+function looksLikeStreamUrl(url) {
+  const lower = url.toLowerCase();
+  const exts = ['.mp3', '.aac', '.ogg', '.opus', '.flac', '.m3u', '.m3u8', '.pls', '.xspf'];
+  if (exts.some(e => lower.split('?')[0].endsWith(e))) return true;
+  if (/\/(stream|listen|radio|live|audio|play)\b/i.test(lower)) return true;
+  if (/[:]\d{4,5}(\/|$)/.test(lower)) return true; // port-based streams like :8000
+  return false;
+}
+
+function guessTitle(url) {
+  try {
+    const u = new URL(url);
+    // try to extract a name from hostname
+    const parts = u.hostname.replace('www.', '').split('.');
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  } catch {
+    return 'Station';
+  }
+}
+
+function extractExtension(url) {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    const dot = pathname.lastIndexOf('.');
+    if (dot >= 0) return pathname.slice(dot);
+  } catch {}
+  return '';
+}
+
+// ---------------------------------------------------------------------------
+// Playlist parsers
+// ---------------------------------------------------------------------------
+function parseM3U(text, baseUrl) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  return lines
+    .filter(l => {
+      try { new URL(l, baseUrl); return true; } catch { return false; }
+    })
+    .map(l => {
+      const resolved = new URL(l, baseUrl).toString();
+      return { title: guessTitle(resolved), streamUrl: resolved };
+    });
+}
+
+function parsePLS(text, baseUrl) {
+  const stations = [];
+  const fileLines = {};
+  const titleLines = {};
+
+  for (const line of text.split(/\r?\n/)) {
+    const fm = line.match(/^File(\d+)\s*=\s*(.+)/i);
+    if (fm) fileLines[fm[1]] = fm[2].trim();
+    const tm = line.match(/^Title(\d+)\s*=\s*(.+)/i);
+    if (tm) titleLines[tm[1]] = tm[2].trim();
+  }
+
+  for (const idx of Object.keys(fileLines)) {
+    try {
+      const resolved = new URL(fileLines[idx], baseUrl).toString();
+      stations.push({
+        title: titleLines[idx] || guessTitle(resolved),
+        streamUrl: resolved
+      });
+    } catch {}
+  }
+  return stations;
+}
+
+function parseXSPF(text) {
+  const stations = [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'application/xml');
+    const tracks = doc.querySelectorAll('track');
+    tracks.forEach(t => {
+      const loc = t.querySelector('location');
+      const ttl = t.querySelector('title');
+      if (loc && loc.textContent.trim()) {
+        stations.push({
+          title: (ttl && ttl.textContent.trim()) || guessTitle(loc.textContent.trim()),
+          streamUrl: loc.textContent.trim()
+        });
+      }
+    });
+  } catch {}
+  return stations;
+}
+
+// ---------------------------------------------------------------------------
+// HTML stream extractor
+// ---------------------------------------------------------------------------
+function extractStreamsFromHtml(html, baseUrl) {
+  const stations = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // 1. <audio> and <source> tags
+  doc.querySelectorAll('audio[src], audio source[src], video[src], video source[src]').forEach(el => {
+    const src = el.getAttribute('src');
+    if (src) {
+      try {
+        stations.push({
+          title: guessTitle(new URL(src, baseUrl).toString()),
+          streamUrl: new URL(src, baseUrl).toString()
+        });
+      } catch {}
+    }
+  });
+
+  // 2. Links to stream files
+  doc.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && looksLikeStreamUrl(href)) {
+      try {
+        const full = new URL(href, baseUrl).toString();
+        stations.push({
+          title: a.textContent.trim() || guessTitle(full),
+          streamUrl: full,
+          stationPageUrl: baseUrl
+        });
+      } catch {}
+    }
+  });
+
+  // 3. Common patterns in inline scripts / data attributes
+  const allText = html;
+  const urlRegex = /https?:\/\/[^\s"'<>]+\.(mp3|aac|ogg|opus|m3u8?|pls|flac)(\?[^\s"'<>]*)?/gi;
+  let m;
+  while ((m = urlRegex.exec(allText)) !== null) {
+    stations.push({
+      title: guessTitle(m[0]),
+      streamUrl: m[0]
+    });
+  }
+
+  // 4. Icecast / Shoutcast style: look for URLs with port patterns
+  const iceRegex = /https?:\/\/[^\s"'<>]+:\d{4,5}\/[^\s"'<>]*/gi;
+  while ((m = iceRegex.exec(allText)) !== null) {
+    stations.push({
+      title: guessTitle(m[0]),
+      streamUrl: m[0]
+    });
+  }
+
+  return stations;
+}
+
+// ---------------------------------------------------------------------------
+// Core resolver
+// ---------------------------------------------------------------------------
+async function resolveUrl(inputUrl) {
+  const result = {
+    kind: 'unknown',
+    groupTitle: '',
+    stations: [],
+    errors: []
+  };
+
+  let url;
+  try {
+    // allow bare hostnames
+    if (!/^https?:\/\//i.test(inputUrl)) inputUrl = 'https://' + inputUrl;
+    url = new URL(inputUrl);
+  } catch {
+    result.errors.push('Invalid URL');
+    return result;
+  }
+
+  result.groupTitle = guessTitle(url.toString());
+
+  const ext = extractExtension(url.toString());
+
+  // --- Direct playlist file ---
+  if (['.m3u', '.m3u8', '.pls', '.xspf'].includes(ext)) {
+    log('Fetching playlist file...');
+    try {
+      const resp = await fetch(url.toString());
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+
+      if (ext === '.pls') {
+        result.stations = parsePLS(text, url.toString());
+      } else if (ext === '.xspf') {
+        result.stations = parseXSPF(text);
+      } else {
+        result.stations = parseM3U(text, url.toString());
+      }
+
+      result.kind = 'playlist';
+      result.stations = deduplicate(result.stations);
+      if (result.stations.length === 0) {
+        result.errors.push('Playlist parsed but no stream URLs found.');
+      }
+      return result;
+    } catch (err) {
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        result.errors.push(`CORS error: cannot fetch ${url}. The server does not allow cross-origin requests from the browser.`);
+      } else {
+        result.errors.push(`Fetch error: ${err.message}`);
+      }
+      return result;
+    }
+  }
+
+  // --- Likely a direct stream URL (audio extension or stream-like path) ---
+  if (looksLikeStreamUrl(url.toString())) {
+    log('URL looks like a direct stream. Probing...');
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(url.toString(), {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'Range': 'bytes=0-0' }
+      });
+      clearTimeout(timeout);
+
+      const ct = resp.headers.get('content-type') || '';
+
+      if (isAudioContentType(ct) || resp.ok) {
+        // Could still be a playlist served without the correct extension
+        if (ct.includes('mpegurl') || ct.includes('x-scpls') || ct.includes('xspf')) {
+          const text = await resp.text();
+          if (ct.includes('scpls')) result.stations = parsePLS(text, url.toString());
+          else if (ct.includes('xspf')) result.stations = parseXSPF(text);
+          else result.stations = parseM3U(text, url.toString());
+          result.kind = 'playlist';
+        } else {
+          result.kind = 'direct_stream';
+          result.stations = [{ title: result.groupTitle, streamUrl: url.toString() }];
+        }
+        result.stations = deduplicate(result.stations);
+        return result;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        // Timeout likely means it's a long-lived audio stream — treat as direct
+        result.kind = 'direct_stream';
+        result.stations = [{ title: result.groupTitle, streamUrl: url.toString() }];
+        return result;
+      }
+      if (err instanceof TypeError) {
+        result.errors.push(`CORS error: cannot probe ${url}. Use the manual fallback below.`);
+        return result;
+      }
+      result.errors.push(`Probe error: ${err.message}`);
+      return result;
+    }
+  }
+
+  // --- Assume HTML page: try to fetch & parse ---
+  log('Fetching page to extract stream URLs...');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
+
+    const ct = resp.headers.get('content-type') || '';
+
+    // If server returned audio directly
+    if (isAudioContentType(ct)) {
+      result.kind = 'direct_stream';
+      result.stations = [{ title: result.groupTitle, streamUrl: url.toString() }];
+      return result;
+    }
+
+    // Playlist content-type
+    if (ct.includes('mpegurl') || ct.includes('x-scpls') || ct.includes('xspf')) {
+      const text = await resp.text();
+      if (ct.includes('scpls')) result.stations = parsePLS(text, url.toString());
+      else if (ct.includes('xspf')) result.stations = parseXSPF(text);
+      else result.stations = parseM3U(text, url.toString());
+      result.kind = 'playlist';
+      result.stations = deduplicate(result.stations);
+      return result;
+    }
+
+    const html = await resp.text();
+    result.stations = extractStreamsFromHtml(html, url.toString());
+    result.stations = deduplicate(result.stations);
+    result.kind = 'html_page';
+
+    if (result.stations.length === 0) {
+      result.errors.push('No stream URLs found on this page. The page may require JavaScript rendering or the streams are loaded dynamically. Use the manual fallback below.');
+    }
+    return result;
+
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      result.errors.push('Request timed out.');
+    } else if (err instanceof TypeError && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+      result.errors.push(`CORS error: the server at ${url.hostname} does not allow cross-origin requests from the browser. Use the manual fallback below.`);
+    } else {
+      result.errors.push(`Fetch error: ${err.message}`);
+    }
+    return result;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Playback
+// ---------------------------------------------------------------------------
+function stopPlayback() {
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  if (currentlyPlayingBtn) {
+    currentlyPlayingBtn.textContent = 'Play';
+    currentlyPlayingBtn.classList.remove('active');
+    currentlyPlayingBtn = null;
+  }
+}
+
+function togglePlay(streamUrl, btn) {
+  // If this button is already playing, stop
+  if (currentlyPlayingBtn === btn) {
+    stopPlayback();
+    return;
+  }
+
+  // Stop any previous
+  stopPlayback();
+
+  // Start new
+  audio.src = streamUrl;
+  audio.volume = parseFloat(volumeSlider.value);
+  audio.play().then(() => {
+    btn.textContent = 'Stop';
+    btn.classList.add('active');
+    currentlyPlayingBtn = btn;
+  }).catch(err => {
+    log(`Playback error: ${err.message}`, true);
+    btn.textContent = 'Play';
+    btn.classList.remove('active');
+  });
+}
+
+audio.addEventListener('error', () => {
+  if (currentlyPlayingBtn) {
+    log('Audio error: stream may be unavailable or blocked by CORS.', true);
+    currentlyPlayingBtn.textContent = 'Play';
+    currentlyPlayingBtn.classList.remove('active');
+    currentlyPlayingBtn = null;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// UI Rendering
+// ---------------------------------------------------------------------------
+function renderGroup(result) {
+  groupCounter++;
+  const area = document.getElementById('resultsArea');
+
+  const card = document.createElement('div');
+  card.className = 'group-card';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'group-header';
+
+  const badge = document.createElement('span');
+  badge.className = `kind-badge ${result.kind}`;
+  badge.textContent = result.kind.replace('_', ' ');
+  header.appendChild(badge);
+
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'editable';
+  titleInput.value = result.groupTitle || `Group ${groupCounter}`;
+  titleInput.title = 'Click to edit group title';
+  header.appendChild(titleInput);
+
+  const countSpan = document.createElement('span');
+  countSpan.style.cssText = 'color: var(--text-dim); font-size: 0.82rem; margin-left: auto;';
+  countSpan.textContent = `${result.stations.length} station${result.stations.length !== 1 ? 's' : ''}`;
+  header.appendChild(countSpan);
+
+  card.appendChild(header);
+
+  // Stations
+  if (result.stations.length > 0) {
+    const list = document.createElement('div');
+    list.className = 'station-list';
+
+    result.stations.forEach((station, i) => {
+      const row = document.createElement('div');
+      row.className = 'station-row';
+
+      // Editable title
+      const stTitle = document.createElement('input');
+      stTitle.type = 'text';
+      stTitle.className = 'editable station-title';
+      stTitle.value = station.title || `Station ${i + 1}`;
+      stTitle.title = 'Click to edit station title';
+      row.appendChild(stTitle);
+
+      // Stream URL display
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'station-url';
+      urlSpan.textContent = station.streamUrl;
+      urlSpan.title = station.streamUrl;
+      row.appendChild(urlSpan);
+
+      // Station page link (if any)
+      if (station.stationPageUrl) {
+        const link = document.createElement('a');
+        link.href = station.stationPageUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'page';
+        row.appendChild(link);
+      }
+
+      // Action buttons
+      const actions = document.createElement('div');
+      actions.className = 'station-actions';
+
+      const playBtn = document.createElement('button');
+      playBtn.className = 'small play-btn';
+      playBtn.textContent = 'Play';
+      playBtn.addEventListener('click', () => togglePlay(station.streamUrl, playBtn));
+      actions.appendChild(playBtn);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'small copy-btn';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(station.streamUrl).then(() => toast('Copied!'));
+      });
+      actions.appendChild(copyBtn);
+
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+
+    card.appendChild(list);
+  }
+
+  // Errors
+  if (result.errors.length > 0) {
+    const errDiv = document.createElement('div');
+    errDiv.style.cssText = 'margin-top: 0.6rem; font-size: 0.82rem; color: var(--red);';
+    errDiv.textContent = result.errors.join('\n');
+    card.appendChild(errDiv);
+  }
+
+  area.prepend(card);
+}
+
+function showManualFallback(inputUrl) {
+  const area = document.getElementById('fallbackArea');
+  area.classList.remove('hidden');
+  area.innerHTML = '';
+
+  const box = document.createElement('div');
+  box.className = 'fallback-box';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = 'Manual Fallback';
+  box.appendChild(h3);
+
+  const p = document.createElement('p');
+  p.textContent = 'Auto-resolve failed (likely CORS). Paste direct stream URLs below, one per line, to create a group manually.';
+  box.appendChild(p);
+
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'https://stream.example.com/radio.mp3\nhttps://other.example.com/live';
+  box.appendChild(ta);
+
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Create Group from URLs';
+  submitBtn.addEventListener('click', () => {
+    const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+      log('Please enter at least one URL.', true);
+      return;
+    }
+
+    const stations = [];
+    for (const line of lines) {
+      try {
+        const u = new URL(line.startsWith('http') ? line : 'https://' + line);
+        stations.push({ title: guessTitle(u.toString()), streamUrl: u.toString() });
+      } catch {
+        log(`Skipped invalid URL: ${line}`, true);
+      }
+    }
+
+    if (stations.length === 0) return;
+
+    const manualResult = {
+      kind: 'manual',
+      groupTitle: guessTitle(inputUrl) + ' (manual)',
+      stations: deduplicate(stations),
+      errors: []
+    };
+
+    renderGroup(manualResult);
+    area.classList.add('hidden');
+    log(`Created manual group with ${manualResult.stations.length} station(s).`);
+  });
+
+  box.appendChild(submitBtn);
+  area.appendChild(box);
+}
+
+// ---------------------------------------------------------------------------
+// Main action
+// ---------------------------------------------------------------------------
+document.getElementById('resolveBtn').addEventListener('click', async () => {
+  const input = document.getElementById('urlInput').value.trim();
+  if (!input) {
+    log('Please enter a URL.', true);
+    return;
+  }
+
+  const btn = document.getElementById('resolveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Resolving...';
+  log('Resolving...');
+  document.getElementById('fallbackArea').classList.add('hidden');
+
+  try {
+    const result = await resolveUrl(input);
+
+    if (result.stations.length > 0) {
+      renderGroup(result);
+      log(`Resolved: ${result.kind} — ${result.stations.length} station(s) found.`);
+    } else {
+      log(result.errors.join('\n') || 'No streams found.', true);
+      showManualFallback(input);
+    }
+  } catch (err) {
+    log(`Unexpected error: ${err.message}`, true);
+    showManualFallback(input);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Resolve';
+  }
+});
+
+// Allow Enter key to trigger resolve
+document.getElementById('urlInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('resolveBtn').click();
+});
+</script>
+
+</body>
+</html>
