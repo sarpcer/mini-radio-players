@@ -517,13 +517,16 @@ function extractStreamsFromHtml(html, baseUrl) {
 // Stream URLs may go stale; treat this as a curated list requiring occasional review.
 // ---------------------------------------------------------------------------
 const KNOWN_STATIONS = {
+  // NTS Live (confirmed via mikepierce/internet-radio-streams repo)
   'nts.live': [
     { title: 'NTS Live — Channel 1', streamUrl: 'https://stream-relay-geo.ntslive.net/stream' },
     { title: 'NTS Live — Channel 2', streamUrl: 'https://stream-relay-geo.ntslive.net/stream2' }
   ],
+  // Rinse FM (confirmed via mikepierce/internet-radio-streams RinseFM.m3u)
   'rinse.fm': [
-    { title: 'Rinse FM', streamUrl: 'https://rinse.out.airtime.pro/rinse_a' }
+    { title: 'Rinse FM', streamUrl: 'https://admin.stream.rinse.fm/proxy/rinse_uk/stream' }
   ],
+  // SomaFM (stable Icecast URLs, unchanged for years)
   'somafm.com': [
     { title: 'SomaFM — Groove Salad',    streamUrl: 'https://ice1.somafm.com/groovesalad-128-mp3' },
     { title: 'SomaFM — Drone Zone',      streamUrl: 'https://ice1.somafm.com/dronezone-128-mp3' },
@@ -531,19 +534,44 @@ const KNOWN_STATIONS = {
     { title: 'SomaFM — Indie Pop Rocks', streamUrl: 'https://ice1.somafm.com/indiepop-128-mp3' },
     { title: 'SomaFM — Space Station',   streamUrl: 'https://ice1.somafm.com/spacestation-128-mp3' }
   ],
+  // KEXP (confirmed via mikepierce/internet-radio-streams KEXP-Seattle.m3u)
   'kexp.org': [
-    { title: 'KEXP 90.3 FM', streamUrl: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3' }
+    { title: 'KEXP 90.3 FM (MP3)',  streamUrl: 'http://live-mp3-128.kexp.org' },
+    { title: 'KEXP 90.3 FM (AAC)',  streamUrl: 'http://live-aacplus-64.kexp.org/kexp64.aac' }
   ],
+  // FIP (Radio France) — HiFi AAC via icecast.radiofrance.fr
   'fip.fr': [
-    { title: 'FIP',         streamUrl: 'https://icecast.radiofrance.fr/fip-hifi.aac' },
-    { title: 'FIP Rock',    streamUrl: 'https://icecast.radiofrance.fr/fiprock-hifi.aac' },
-    { title: 'FIP Jazz',    streamUrl: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac' },
-    { title: 'FIP Monde',   streamUrl: 'https://icecast.radiofrance.fr/fipmonde-hifi.aac' },
-    { title: 'FIP Électro', streamUrl: 'https://icecast.radiofrance.fr/fipelectro-hifi.aac' }
+    { title: 'FIP',         streamUrl: 'https://icecast.radiofrance.fr/fip-hifi.aac?id=radiofrance' },
+    { title: 'FIP Rock',    streamUrl: 'https://icecast.radiofrance.fr/fiprock-hifi.aac?id=radiofrance' },
+    { title: 'FIP Jazz',    streamUrl: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac?id=radiofrance' },
+    { title: 'FIP Monde',   streamUrl: 'https://icecast.radiofrance.fr/fipmonde-hifi.aac?id=radiofrance' },
+    { title: 'FIP Électro', streamUrl: 'https://icecast.radiofrance.fr/fipelectro-hifi.aac?id=radiofrance' }
   ],
+  // radiofrance.fr — all Radio France stations
+  'radiofrance.fr': [
+    { title: 'FIP',              streamUrl: 'https://icecast.radiofrance.fr/fip-hifi.aac?id=radiofrance' },
+    { title: 'FIP Rock',         streamUrl: 'https://icecast.radiofrance.fr/fiprock-hifi.aac?id=radiofrance' },
+    { title: 'FIP Jazz',         streamUrl: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac?id=radiofrance' },
+    { title: 'FIP Électro',      streamUrl: 'https://icecast.radiofrance.fr/fipelectro-hifi.aac?id=radiofrance' },
+    { title: 'France Inter',     streamUrl: 'https://icecast.radiofrance.fr/franceinter-hifi.aac?id=radiofrance' },
+    { title: 'France Culture',   streamUrl: 'https://icecast.radiofrance.fr/franceculture-hifi.aac?id=radiofrance' },
+    { title: 'France Musique',   streamUrl: 'https://icecast.radiofrance.fr/francemusique-hifi.aac?id=radiofrance' }
+  ],
+  // Individual Radio France station domains
+  'franceinter.fr': [
+    { title: 'France Inter', streamUrl: 'https://icecast.radiofrance.fr/franceinter-hifi.aac?id=radiofrance' }
+  ],
+  'franceculture.fr': [
+    { title: 'France Culture', streamUrl: 'https://icecast.radiofrance.fr/franceculture-hifi.aac?id=radiofrance' }
+  ],
+  'francemusique.fr': [
+    { title: 'France Musique', streamUrl: 'https://icecast.radiofrance.fr/francemusique-hifi.aac?id=radiofrance' }
+  ],
+  // WFMU
   'wfmu.org': [
     { title: 'WFMU', streamUrl: 'https://stream0.wfmu.org/freeform-128k' }
   ],
+  // Worldwide FM (Airtime Pro hosted)
   'worldwidefm.net': [
     { title: 'Worldwide FM', streamUrl: 'https://worldwidefm.out.airtime.pro/worldwidefm_a' }
   ]
