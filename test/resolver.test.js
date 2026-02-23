@@ -116,9 +116,44 @@ describe('Known Stations - resolveUrl', () => {
     assert.ok(result.stations[0].title.includes('France Inter'));
   });
 
+  it('resolves acikradyo.com.tr (Apaçık Radyo)', async () => {
+    const result = await window.resolveUrl('acikradyo.com.tr');
+    assert.equal(result.kind, 'known_station');
+    assert.equal(result.stations.length, 1);
+    assert.ok(result.stations[0].streamUrl.includes('stream.34bit.net'));
+  });
+
+  it('resolves apacikradyo.com.tr as alias', async () => {
+    const result = await window.resolveUrl('apacikradyo.com.tr');
+    assert.equal(result.kind, 'known_station');
+    assert.equal(result.stations.length, 1);
+  });
+
+  it('resolves radioeksen.com (Radyo Eksen)', async () => {
+    const result = await window.resolveUrl('radioeksen.com');
+    assert.equal(result.kind, 'known_station');
+    assert.equal(result.stations.length, 1);
+    assert.ok(result.stations[0].streamUrl.includes('radyotvonline.com'));
+  });
+
+  it('resolves futuregeneration.net (FG 93.8)', async () => {
+    const result = await window.resolveUrl('futuregeneration.net');
+    assert.equal(result.kind, 'known_station');
+    assert.equal(result.stations.length, 1);
+  });
+
+  it('resolves radiofg.com with sub-channels', async () => {
+    const result = await window.resolveUrl('radiofg.com');
+    assert.equal(result.kind, 'known_station');
+    assert.ok(result.stations.length >= 5, `Expected ≥5 stations, got ${result.stations.length}`);
+    const titles = result.stations.map(s => s.title);
+    assert.ok(titles.some(t => t.includes('Radio FG')));
+    assert.ok(titles.some(t => t.includes('Lounge')));
+  });
+
   it('resolves all KNOWN_STATIONS keys', async () => {
     const keys = getKnownStationKeys();
-    assert.ok(keys.length >= 8, `Expected ≥8 keys, got ${keys.length}`);
+    assert.ok(keys.length >= 14, `Expected ≥14 keys, got ${keys.length}`);
     for (const key of keys) {
       const result = await window.resolveUrl(key);
       assert.equal(result.kind, 'known_station', `Key "${key}" should resolve as known_station`);
