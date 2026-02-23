@@ -129,17 +129,24 @@ describe('Known Stations - resolveUrl', () => {
     assert.equal(result.stations.length, 1);
   });
 
-  it('resolves radioeksen.com (Radyo Eksen)', async () => {
+  it('resolves radioeksen.com (Radyo Eksen) with direct stream', async () => {
     const result = await window.resolveUrl('radioeksen.com');
     assert.equal(result.kind, 'known_station');
     assert.equal(result.stations.length, 1);
-    assert.ok(result.stations[0].streamUrl.includes('radyotvonline.com'));
+    assert.ok(result.stations[0].streamUrl.includes('eksenwmp.radyotvonline.com'));
   });
 
   it('resolves futuregeneration.net (FG 93.8)', async () => {
     const result = await window.resolveUrl('futuregeneration.net');
     assert.equal(result.kind, 'known_station');
     assert.equal(result.stations.length, 1);
+  });
+
+  it('resolves loungefm.net (Lounge FM 96.0)', async () => {
+    const result = await window.resolveUrl('loungefm.net');
+    assert.equal(result.kind, 'known_station');
+    assert.equal(result.stations.length, 1);
+    assert.ok(result.stations[0].streamUrl.includes('sc.vargonen.net'));
   });
 
   it('resolves radiofg.com with sub-channels', async () => {
@@ -153,7 +160,7 @@ describe('Known Stations - resolveUrl', () => {
 
   it('resolves all KNOWN_STATIONS keys', async () => {
     const keys = getKnownStationKeys();
-    assert.ok(keys.length >= 14, `Expected ≥14 keys, got ${keys.length}`);
+    assert.ok(keys.length >= 15, `Expected ≥15 keys, got ${keys.length}`);
     for (const key of keys) {
       const result = await window.resolveUrl(key);
       assert.equal(result.kind, 'known_station', `Key "${key}" should resolve as known_station`);
